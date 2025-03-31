@@ -10,7 +10,7 @@ int main() {
     GlobalLogger->info("Global logger initialized");
 
     device = std::make_shared<RdmaDevice>();
-    int num_data = 1000;
+    int num_data = 10000;
     int dim = 128;
     int max_m = 32;
     int ef_construction = 200;

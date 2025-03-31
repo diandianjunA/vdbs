@@ -108,11 +108,9 @@ __inline__ __device__ void PushNodeToSearchPq(char *data, Node *pq, int *size,
     Node node = {dist, dstid, false};
     // printf("size: %d, ef_search: %d\n", *size, ef_search);
     if (*size < ef_search) {
-        // printf("before push thread_id: %d, PushNodeToSearchPq: %f %f, size: %d\n",
-               threadIdx.x, pq[0].distance, dist, *size);
+        // printf("before push thread_id: %d, PushNodeToSearchPq: %f %f, size: %d\n", threadIdx.x, pq[0].distance, dist, *size);
         PqPush(pq, size, node);
-        // printf("after push thread_id: %d, PushNodeToSearchPq: %f %f, size: %d\n",
-               threadIdx.x, pq[0].distance, dist, *size);
+        // printf("after push thread_id: %d, PushNodeToSearchPq: %f %f, size: %d\n", threadIdx.x, pq[0].distance, dist, *size);
     } else if (gt(pq[0].distance, dist)) {
         // printf("thread_id: %d, PushNodeToSearchPq: %f %f, size: %d\n",
         // threadIdx.x, pq[0].distance, dist, *size);

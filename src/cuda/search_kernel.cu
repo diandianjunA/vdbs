@@ -30,6 +30,14 @@ __inline__ __device__ unsigned short int getListCount(unsigned int *ptr) {
     return *((unsigned short int *)ptr);
 }
 
+__inline__ __device__ size_t get_primary_key(char *data,
+                                             unsigned int internal_id,
+                                             int content_id) {
+    return *(size_t *)(data +
+                       (internal_id - content_id) * size_data_per_element +
+                       offsetData + dims * sizeof(float));
+}
+
 __global__ void search_kernel(char *data_, const float *query_data,
                               int num_query, int k, int size_per_query,
                               const int *entry_node, Node *device_pq,
@@ -50,7 +58,7 @@ __global__ void search_kernel(char *data_, const float *query_data,
     int *fech_nodes = global_fetch_nodes + ef_search * blockIdx.x;
 
     bool *_visited_table = visited_table + num_data * blockIdx.x;
-    int& fetch_node_size = fetch_size[blockIdx.x];
+    int &fetch_node_size = fetch_size[blockIdx.x];
     int content_id = entry_node[blockIdx.x];
     char *data = data_ + size_per_query * blockIdx.x;
     int num_per_query = size_per_query / size_data_per_element;
@@ -122,9 +130,20 @@ __global__ void search_kernel(char *data_, const float *query_data,
                 PqPop(ef_search_pq, &size);
             }
             found_cnt[i] = size2 < k ? size2 : k;
-            for (int j = 0; j < found_cnt[i]; ++j) {
-                nns[j + i * k] = candidate_nodes[j];
-                distances[j + i * k] = out_scalar(candidate_distances[j]);
+            int index = 0;
+            for (int j = 0; j < k; j++) {
+                if (nns[i * k + j] == candidate_nodes[index]) {
+                    index++;
+                }
+                if (distances[i * k + j] > candidate_distances[index]) {
+                    for (int l = k - 1; l > j; l--) {
+                        distances[i * k + l] = distances[i * k + l - 1];
+                        nns[i * k + l] = nns[i * k + l - 1];
+                    }
+                    distances[i * k + j] = candidate_distances[index];
+                    nns[i * k + j] = candidate_nodes[index];
+                    index++;
+                }
             }
         }
         __syncthreads();
@@ -149,7 +168,7 @@ __global__ void kernel_check(char *data_, int content_id, int size) {
         printf("deg[%d] = %d\n", i, deg);
         printf("linklist[%d] = [", i);
         for (int j = 1; j <= deg; j++) {
-          printf("%d, ", *(linklist + j));
+            printf("%d, ", *(linklist + j));
         }
         printf("]\n");
     }
@@ -158,8 +177,8 @@ __global__ void kernel_check(char *data_, int content_id, int size) {
 void cuda_search(char *data_, const std::vector<float> &query, int num_query,
                  int ef_search_, int k, int size_per_query,
                  std::vector<bool> &visited_table,
-                 std::vector<int> &fetch_nodes, std::vector<int> fetch_size,
-                 std::vector<int> &entries, float *distances, int *indices,
+                 std::vector<int> &fetch_nodes, std::vector<int> &fetch_size,
+                 std::vector<int> &entries, std::vector<float> &distances, std::vector<int> &indices,
                  int *found) {
     int block_cnt_ = num_query;
     int dim = query.size() / num_query;
@@ -186,6 +205,8 @@ void cuda_search(char *data_, const std::vector<float> &query, int num_query,
                  device_fetch_nodes.begin());
     thrust::copy(fetch_size.begin(), fetch_size.end(),
                  device_fetch_size.begin());
+    thrust::copy(indices.begin(), indices.end(), device_nns.begin());
+    thrust::copy(distances.begin(), distances.end(), device_distances.begin());
 
     search_kernel<<<block_cnt_, 256>>>(
         data_, thrust::raw_pointer_cast(device_query.data()), num_query, k,
@@ -200,8 +221,8 @@ void cuda_search(char *data_, const std::vector<float> &query, int num_query,
         thrust::raw_pointer_cast(device_nns.data()),
         thrust::raw_pointer_cast(device_distances.data()));
     CHECK(cudaDeviceSynchronize());
-    thrust::copy(device_nns.begin(), device_nns.end(), indices);
-    thrust::copy(device_distances.begin(), device_distances.end(), distances);
+    thrust::copy(device_nns.begin(), device_nns.end(), indices.begin());
+    thrust::copy(device_distances.begin(), device_distances.end(), distances.begin());
     thrust::copy(device_found_cnt.begin(), device_found_cnt.end(), found);
     thrust::copy(device_fetch_nodes.begin(), device_fetch_nodes.end(),
                  fetch_nodes.begin());

@@ -19,9 +19,12 @@ int RdmaPools::rdma_read(int qp_id, char *local_addr, size_t size,
         return -1;
     }
     QPEntry *entry = &qps[qp_id];
+    std::lock_guard<std::mutex> lock(entry->get_mtx());
     if (!entry->is_connected()) {
         connect_qp(qp_id);
     }
+    // GlobalLogger->debug("RDMA read: local_addr = {:#x}, size = {}, offset = {}",
+    //                     (uint64_t)local_addr, size, offset);
     struct ibv_sge list = {
         .addr = (uint64_t)local_addr,
         .length = size,
@@ -53,8 +56,7 @@ int RdmaPools::rdma_read(int qp_id, char *local_addr, size_t size,
 }
 
 QPEntry *RdmaPools::add_qp() {
-    QPEntry entry(buffer.get_pd());
-    qps.push_back(entry);
+    qps.emplace_back(buffer.get_pd());
     return &qps.back();
 }
 
@@ -63,10 +65,12 @@ int RdmaPools::get_entry_node(int qp_id) {
         GlobalLogger->error("QP id out of range");
         return -1;
     }
-    if (!qps[qp_id].is_connected()) {
+    QPEntry *entry = &qps[qp_id];
+    std::lock_guard<std::mutex> lock(entry->get_mtx());
+    if (!entry->is_connected()) {
         connect_qp(qp_id);
     }
-    return qps[qp_id].get_entry_node();
+    return entry->get_entry_node();
 }
 
 void RdmaPools::connect_qp(int qp_id) {

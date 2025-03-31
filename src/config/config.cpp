@@ -43,5 +43,5 @@ void Config::calculate() {
     size_data_per_element =
         4 + max_m * sizeof(unsigned int) + dim * sizeof(float) + sizeof(size_t);
     offset_data = 4 + max_m * sizeof(unsigned int);
-    size_per_shard = num_data / shard_num * size_data_per_element;
+    size_per_shard = memory_region_size / shard_num;
 }

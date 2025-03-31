@@ -53,6 +53,33 @@ class RdmaDevice {
 class QPEntry {
   public:
     QPEntry(struct ibv_pd *pd);
+    QPEntry() {}
+    QPEntry(const QPEntry &entry) {
+        qp = entry.qp;
+        cq = entry.cq;
+        remote_props = entry.remote_props;
+        connected = entry.connected;
+    }
+    QPEntry &operator=(const QPEntry &entry) {
+        qp = entry.qp;
+        cq = entry.cq;
+        remote_props = entry.remote_props;
+        connected = entry.connected;
+        return *this;
+    }
+    QPEntry(QPEntry &&entry) {
+        qp = entry.qp;
+        cq = entry.cq;
+        remote_props = entry.remote_props;
+        connected = entry.connected;
+    }
+    QPEntry &operator=(QPEntry &&entry) {
+        qp = entry.qp;
+        cq = entry.cq;
+        remote_props = entry.remote_props;
+        connected = entry.connected;
+        return *this;
+    }
     ~QPEntry() {
         // if (qp) {
         //     ibv_destroy_qp(qp);
@@ -73,6 +100,7 @@ class QPEntry {
     void set_entry_node(unsigned node) { entry_node = node; }
     unsigned get_entry_node() { return entry_node; }
     int post_receive();
+    std::mutex &get_mtx() { return mtx; }
 
   private:
     struct ibv_qp *qp;                 // QP实例
@@ -80,6 +108,7 @@ class QPEntry {
     struct cm_con_data_t remote_props; // 远端QP属性
     bool connected;                    // 是否已连接
     unsigned entry_node;
+    std::mutex mtx;
 };
 
 class RdmaBuffer {

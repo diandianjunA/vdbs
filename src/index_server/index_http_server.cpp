@@ -73,8 +73,6 @@ void IndexHttpServer::searchHandler(const httplib::Request &req,
 
     int k = json_request["k"].GetInt();
 
-    GlobalLogger->debug("Query parameters: k = {}", k);
-
     std::pair<std::vector<long>, std::vector<float>> results =
         indexEngine.search_vectors(query, k);
 

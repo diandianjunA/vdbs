@@ -68,7 +68,7 @@ def search(vectors, top_k=10, url="http://localhost:4000/search"):
         print(f"Error searching: {e}")
 
 if __name__ == "__main__":
-    vector = generate_random_float_vector(num_vectors=1000)
+    vector = generate_random_float_vector(num_vectors=10000)
     insert(vector)
     input("Press Enter to search vectors...")
     vector = generate_random_float_vector(num_vectors=1)
